@@ -2,11 +2,9 @@ module Data.OpenSum where
 
 import Data.Dynamic
 
-newtype Sum (l :: [*]) = Sum { unSum :: Dynamic }
+newtype Sum l = Sum { unSum :: Dynamic }
 
-class Member (l :: [*]) t
-instance Member (t ': l) t
-instance {-# OVERLAPPABLE #-} Member l t => Member (nt ': l) t
+class Member l t
 
 inj :: (Typeable t, Member l t) => t -> Sum l
 inj = Sum . toDyn
