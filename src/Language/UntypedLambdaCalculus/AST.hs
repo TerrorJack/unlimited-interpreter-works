@@ -1,61 +1,38 @@
 module Language.UntypedLambdaCalculus.AST where
 
-import Data.OpenSum
+import Data.Proxy
 
-type Id = Int
+newtype Id = Id Int
 
-newtype Var = Var Id
+data Phase = O | S | E | K | H
 
-data App = App Term Term
+class HasPush (p :: Phase) (p' :: Phase)
+instance HasPush 'S 'S
+instance HasPush 'S 'E
+instance HasPush 'S 'K
+instance HasPush 'S 'H
+instance HasPush 'E 'E
+instance HasPush 'E 'K
+instance HasPush 'E 'H
+instance HasPush 'K 'K
+instance HasPush 'K 'H
+instance HasPush 'H 'H
 
-data Lam t t' = Lam Id t'
+class HasLam (p :: Phase) (p' :: Phase)
+instance HasLam 'O 'O
+instance HasPush p p' => HasLam p p'
 
-data Seq t = Seq t t
+class VarTerm (t :: Phase -> *) where
+    var :: Id -> t p
 
-data Push t t' = Push t'
+class LamTerm (t :: Phase -> *) where
+    lam :: HasLam p p' => Proxy p -> Id -> t p' -> t p'
 
-newtype Term = Term (forall l . (
-    Member l Var,
-    Member l App,
-    Member l (Lam Term Term)
-        ) => Sum l)
+class PushTerm (t :: Phase -> *) where
+    push :: HasPush p p' => Proxy p -> t p' -> t p'
 
-newtype TermS = TermS (forall l . (
-    Member l Var,
-    Member l (Seq TermS),
-    Member l (Push TermS TermS),
-    Member l (Lam TermS TermS)
-        ) => Sum l)
+class ConnTerm (t :: Phase -> *) where
+    conn :: t p -> t p -> t p
 
-newtype TermE = TermE (forall l . (
-    Member l Var,
-    Member l (Seq TermE),
-    Member l (Push TermS TermE),
-    Member l (Lam TermS TermE),
-    Member l (Push TermE TermE),
-    Member l (Lam TermE TermE)
-        ) => Sum l)
-
-newtype TermK = TermK (forall l . (
-    Member l Var,
-    Member l (Seq TermK),
-    Member l (Push TermS TermK),
-    Member l (Lam TermS TermK),
-    Member l (Push TermE TermK),
-    Member l (Lam TermE TermK),
-    Member l (Push TermK TermK),
-    Member l (Lam TermK TermK)
-        ) => Sum l)
-
-newtype TermH = TermH (forall l . (
-    Member l Var,
-    Member l (Seq TermH),
-    Member l (Push TermS TermH),
-    Member l (Lam TermS TermH),
-    Member l (Push TermE TermH),
-    Member l (Lam TermE TermH),
-    Member l (Push TermK TermH),
-    Member l (Lam TermK TermH),
-    Member l (Push TermH TermH),
-    Member l (Lam TermH TermH)
-        ) => Sum l)
+class AppTerm (t :: Phase -> *) where
+    app :: t 'O -> t 'O -> t 'O
